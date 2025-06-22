@@ -258,6 +258,8 @@ char *parseCommandLine(int argc, char *argv[]) {
 
 void parseHeader() {
 	if (g_options.GF_UNBLOCKED) {
+// mblsha: don't want to add dummy size to the beginning of the scripts, so ignore this check.
+#if 0
 		if (g_scriptSize < 4) {
 			error("File too small to be a script");
 		}
@@ -270,6 +272,7 @@ void parseHeader() {
 		} else {
 			g_scriptStart += 4;
 		}
+#endif
 	} else if (g_options.scriptVersion >= 5) {
 		if (g_scriptSize < (uint)(g_options.scriptVersion == 5 ? 8 : 9)) {
 			error("File too small to be a script");
