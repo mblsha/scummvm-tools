@@ -63,7 +63,9 @@ void ShowHelpAndExit() {
 			"\t-b\tDon't output breaks\n"
 			"\t-c\tDon't show opcode\n"
 			"\t-x\tDon't show offsets\n"
-			"\t-h\tHalt on error\n");
+			"\t-h\tHalt on error\n"
+			"\t-j[XXXX]\tNormalize jump addresses (optionally specify start address in hex)\n"
+			"\t-l\tLiteral mode (no prettification, match pyscumm6 output)\n");
 	exit(0);
 }
 
@@ -241,6 +243,22 @@ char *parseCommandLine(int argc, char *argv[]) {
 				case 'h':
 					g_options.haltOnError = true;
 					break;
+				case 'j':
+					g_options.normalizeJumps = true;
+					// Check if there's a hex address following the -j
+					if (s[1] != '\0') {
+						// Parse hex address
+						char *endptr;
+						unsigned long addr = strtoul(s + 1, &endptr, 16);
+						if (*endptr == '\0') {
+							g_scriptStartAddress = (uint)addr;
+							s = endptr - 1; // Position s to the last character processed
+						}
+					}
+					break;
+				case 'l':
+					g_options.literalMode = true;
+					break;
 				default:
 					ShowHelpAndExit();
 				}
@@ -273,6 +291,16 @@ void parseHeader() {
 			g_scriptStart += 4;
 		}
 #endif
+		// For unblocked scripts, check if first 4 bytes might be a start address
+		if (g_scriptSize >= 4) {
+			// Read the first 4 bytes as a potential start address
+			uint32 potentialStartAddr = READ_LE_UINT32(g_scriptStart);
+			// If it looks like an address (not the script size), use it
+			if (potentialStartAddr != g_scriptSize && potentialStartAddr > 0x1000) {
+				g_scriptStartAddress = potentialStartAddr;
+				g_scriptStart += 4;
+			}
+		}
 	} else if (g_options.scriptVersion >= 5) {
 		if (g_scriptSize < (uint)(g_options.scriptVersion == 5 ? 8 : 9)) {
 			error("File too small to be a script");
@@ -427,10 +455,13 @@ int main(int argc, char *argv[]) {
 			outputLine(outputLineBuffer, currentOpcodeBlockStart, opcode, j);
 			currentOpcodeBlockStart = get_curoffs();
 		}
-		while (!g_blockStack.empty() && get_curoffs() >= (int)g_blockStack.top().to) {
-			g_blockStack.pop();
-			outputLine("}", currentOpcodeBlockStart, -1, g_blockStack.size());
-			currentOpcodeBlockStart = get_curoffs();
+		// Skip block closing in literal mode
+		if (!g_options.literalMode) {
+			while (!g_blockStack.empty() && get_curoffs() >= (int)g_blockStack.top().to) {
+				g_blockStack.pop();
+				outputLine("}", currentOpcodeBlockStart, -1, g_blockStack.size());
+				currentOpcodeBlockStart = get_curoffs();
+			}
 		}
 		fflush(stdout);
 	}

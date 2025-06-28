@@ -1398,6 +1398,12 @@ void jump(char *output) {
 	int offset = get_word();
 	int cur = get_curoffs();
 	int to = cur + offset;
+	
+	// If jump normalization is enabled and we have a start address, normalize the target
+	int displayTo = to;
+	if (g_options.normalizeJumps && g_scriptStartAddress != 0) {
+		displayTo = to + g_scriptStartAddress;
+	}
 
 	if (offset == 1) {
 		// Sometimes, jumps with offset 1 occur. I used to suppress those.
@@ -1406,7 +1412,7 @@ void jump(char *output) {
 		// but in many other cases, an otherwise hidden instruction is revealed,
 		// or an instruction is placed into an else branch instead of being
 		// (incorrectly) placed inside the body of the 'if' itself.
-		sprintf(output, "/* jump %x; */", to);
+		sprintf(output, "/* jump %x; */", displayTo);
 	} else if (!g_options.dontOutputElse && maybeAddElse(cur, to)) {
 		pendingElse = true;
 		pendingElseTo = to;
@@ -1423,7 +1429,7 @@ void jump(char *output) {
 				return;
 		  }
 		}
-		sprintf(output, "jump %x", to);
+		sprintf(output, "jump %x", displayTo);
 	}
 }
 
@@ -1433,13 +1439,28 @@ void jumpif(char *output, StackEnt *se, bool negate) {
 	int to = cur + offset;
 	char *e = output;
 
+	// If jump normalization is enabled and we have a start address, normalize the target
+	int displayTo = to;
+	if (g_options.normalizeJumps && g_scriptStartAddress != 0) {
+		displayTo = to + g_scriptStartAddress;
+	}
+
+	// Literal mode - output in pyscumm6 style without prettification
+	if (g_options.literalMode) {
+		e = strecpy(e, negate ? "unless ((" : "if ((");
+		e = se_astext(se, e, false);
+		e = strecpy(e, ")) jump ");
+		sprintf(e, "%x", displayTo);
+		return;
+	}
+
 	if (!g_options.dontOutputElseif && pendingElse) {
 		if (maybeAddElseIf(cur, pendingElseTo, to)) {
 			pendingElse = false;
 			haveElse = true;
 			e = strecpy(e, "} else if (");
 			e = se_astext(se, e, false);
-			sprintf(e, g_options.alwaysShowOffs ? ") /*%.4X*/ {" : ") {", to);
+			sprintf(e, g_options.alwaysShowOffs ? ") /*%.4X*/ {" : ") {", displayTo);
 			return;
 		}
 	}
@@ -1450,13 +1471,13 @@ void jumpif(char *output, StackEnt *se, bool negate) {
 		else
 			e = strecpy(e, negate ? "unless (" : "if (");
 		e = se_astext(se, e, false);
-		sprintf(e, g_options.alwaysShowOffs ? ") /*%.4X*/ {" : ") {", to);
+		sprintf(e, g_options.alwaysShowOffs ? ") /*%.4X*/ {" : ") {", displayTo);
 		return;
 	}
 
 	e = strecpy(e, negate ? "if (" : "unless (");
 	e = se_astext(se, e);
-	sprintf(e, ") jump %x", to);
+	sprintf(e, ") jump %x", displayTo);
 }
 
 void dup_n() {

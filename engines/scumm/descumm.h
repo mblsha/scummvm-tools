@@ -119,6 +119,8 @@ struct Options {
 	bool dontShowOpcode;
 	bool dontShowOffsets;
 	bool haltOnError;
+	bool normalizeJumps;
+	bool literalMode;
 
 	bool ZakFlag;
 	bool IndyFlag;
@@ -139,6 +141,11 @@ extern Options g_options;
 //
 extern byte *g_scriptStart;
 extern uint g_scriptSize;
+
+//
+// Original script start address (from script header or command line)
+//
+extern uint g_scriptStartAddress;
 
 //
 // Pointer to the current byte, i.e. the byte to be

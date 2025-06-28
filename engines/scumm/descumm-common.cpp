@@ -44,6 +44,7 @@ byte *g_scriptCurPos, *g_scriptStart;
 int currentOpcodeBlockStart;
 
 uint g_scriptSize;
+uint g_scriptStartAddress = 0;
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -234,6 +235,11 @@ bool maybeAddBreak(uint cur, uint to) {
 }
 
 void writePendingElse() {
+	// Skip else blocks in literal mode
+	if (g_options.literalMode) {
+		return;
+	}
+	
 	if (pendingElse) {
 		char buf[32];
 		sprintf(buf, g_options.alwaysShowOffs ? "} else /*%.4X*/ {" : "} else {", pendingElseTo);
