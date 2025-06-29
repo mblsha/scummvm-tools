@@ -1447,7 +1447,10 @@ void jumpif(char *output, StackEnt *se, bool negate) {
 
 	// Literal mode - output in pyscumm6 style without prettification
 	if (g_options.literalMode) {
-		e = strecpy(e, negate ? "unless ((" : "if ((");
+		// In literal mode, show the actual jump condition
+		// if_not (negate=false) means "jump if false" = "unless"
+		// iff (negate=true) means "jump if true" = "if"
+		e = strecpy(e, negate ? "if ((" : "unless ((");
 		e = se_astext(se, e, false);
 		e = strecpy(e, ")) jump ");
 		sprintf(e, "%x", displayTo);
